@@ -1,6 +1,6 @@
 # Banco de Retos de Innovación CESDE — Backend
 
-API REST del **Banco de Retos de Innovación Abierta** del CESDE. Permite que las empresas publiquen retos de innovación, que los estudiantes se postulen a ellos y que los administradores (docentes) gestionen el catálogo completo.
+API REST del **Banco de Retos de Innovación Abierta** del CESDE. Permite que las empresas publiquen retos de innovación, que los estudiantes se postulen a ellos y que las empresas revisen las postulaciones recibidas.
 
 Este README corresponde únicamente a la parte backend del proyecto integrador. El frontend (React + Vite) se documenta por separado.
 
@@ -8,11 +8,10 @@ Este README corresponde únicamente a la parte backend del proyecto integrador. 
 
 ## 1. Descripción del proyecto
 
-La aplicación centraliza la relación entre tres actores:
+La aplicación centraliza la relación entre dos actores:
 
 - **Empresas**: publican retos de innovación (por ejemplo, un modelo de detección de fraude o una ruta de entrega optimizada), con requisitos, fechas y prioridad, y revisan las postulaciones que reciben.
 - **Estudiantes / participantes**: consultan el catálogo de retos abiertos, filtran por área temática y se postulan.
-- **Administradores / docentes**: gestionan empresas, retos, categorías, prioridades, usuarios y postulaciones.
 
 **Dirigida a:** equipos de desarrollo del curso (para entender y extender la API), docentes que supervisan el proyecto y el frontend que consume los servicios.
 
@@ -46,7 +45,7 @@ com.Cesde.bancoretos
 ├── Repositorio/   → Acceso a datos (interfaces Spring Data JPA)
 ├── Modelo/        → Entidades JPA (tablas de la base de datos)
 ├── Dto/           → Objetos de transferencia de datos
-└── Config/        → Configuración (CORS, datos iniciales)
+└── Config/        → Configuración (datos iniciales)
 ```
 
 ### Capas
@@ -157,30 +156,6 @@ erDiagram
 | Reto → Registro | 1 a N | Un reto recibe muchas postulaciones. |
 | Estudiante → Registro | 1 a N | Un estudiante realiza muchas postulaciones. |
 
-### 3.2 Integridad referencial en la capa de servicios
-
-La integridad se controla en la capa `Servicio/`, no solo en la base de datos. Así el mensaje de error llega al cliente en español y la regla queda explícita en el código.
-
-| Operación | Regla | Dónde está |
-| :--- | :--- | :--- |
-| Eliminar empresa | No se elimina si tiene retos asociados. | `SEmpresa.eliminarEmpresa` |
-| Eliminar categoría | No se elimina si tiene retos asociados. | `SCategoria.eliminarCategoria` |
-| Eliminar prioridad | No se elimina si tiene retos asociados. | `SPrioridad.eliminarPrioridad` |
-| Eliminar estudiante | No se elimina si tiene postulaciones. | `SEstudiante.eliminarEstudiante` |
-| Eliminar reto | No se elimina si tiene postulaciones. | `SReto.eliminarReto` |
-| Adicionar reto | La empresa y la categoría deben existir. Si no, se rechaza. | `SReto.vincularYValidarReto` |
-| Actualizar reto | La empresa y la categoría deben existir. Si no, se rechaza. | `SReto.vincularYValidarReto` |
-| Postular estudiante | El reto y el estudiante deben existir, el reto no puede estar `CERRADO` y el estudiante no puede postularse dos veces. | `SRegistro.adicionarRegistro` |
-
-Mensajes de error de referencia:
-
-- `No se puede eliminar la empresa porque tiene retos registrados`
-- `No se puede eliminar porque tiene retos relacionados` (categoría)
-- `La empresa especificada (ID: X) no está registrada`
-- `La categoría especificada (ID: X) no está registrada`
-
-Las restricciones de llave foránea de la base de datos también están activas, porque las columnas `idempresa`, `idcategoria` e `idestudiante` son obligatorias (`nullable = false`). Las validaciones de servicio se ejecutan antes, para dar un mensaje claro en lugar de un error técnico de base de datos.
-
 ## 4. Requisitos previos
 
 - **JDK 21** o superior (verificar con `java -version`).
@@ -228,19 +203,7 @@ En Windows (PowerShell) la variable se define con `$env:DB_PASSWORD="mi_clave"`.
 
 No es necesario crear la base de datos manualmente.
 
-### 5.4 Compilar
-
-```powershell
-.\mvnw.cmd clean install
-```
-
-En Linux o macOS:
-
-```bash
-./mvnw clean install
-```
-
-### 5.5 Iniciar la aplicación
+### 5.4 Iniciar la aplicación
 
 ```powershell
 .\mvnw.cmd spring-boot:run
@@ -271,11 +234,6 @@ Archivo: `src/main/resources/application.properties`
 - API base: `http://localhost:8080/api`
 - Consola H2: `http://localhost:8080/h2-console`
 
-> **Nota:** la consola H2 no corresponde a la base de datos real, que es MySQL. Sirve solo para pruebas.
-
-### CORS
-
-La clase `Config/WebConfig` permite peticiones desde cualquier origen (`*`) con los métodos `GET`, `POST`, `PUT`, `DELETE`, `OPTIONS` y `PATCH`. Los controladores también tienen `@CrossOrigin(origins = "*")`. Esto facilita el desarrollo con el frontend en `http://localhost:5173`, pero debe restringirse antes de un despliegue real.
 
 ### Usuarios de demostración
 
@@ -285,9 +243,7 @@ Los usuarios de demostración se crean en la tabla de empresas y estudiantes al 
 | :--- | :--- | :--- |
 | Empresa | `empresa@cesde.edu.co` | `123456` |
 | Estudiante | `estudiante@cesde.edu.co` | `123456` |
-| Administrador / Docente | `admin@cesde.edu.co` | `admin123` |
 
-> **Nota:** el usuario administrador no está sembrado en `DataInitializer`. Si el login de administrador falla, debe registrarse o agregarse a la base de datos manualmente.
 
 ---
 
@@ -411,11 +367,6 @@ Estados válidos de un reto: `ABIERTO`, `EN_PROGRESO`, `CERRADO`.
 
 ## 8. Pruebas unitarias
 
-El proyecto no tiene todavía una carpeta `src/test`. Las dependencias de prueba ya están en el `pom.xml`:
-
-- `spring-boot-starter-data-jpa-test`
-- `spring-boot-starter-webmvc-test`
-
 ### Cómo crear una prueba
 
 1. Crear la clase en `src/test/java/com/Cesde/bancoretos/` con el mismo paquete de la clase que se va a probar.
@@ -446,86 +397,7 @@ class CAuthTest {
 }
 ```
 
-### Ejecutar las pruebas
-
-```powershell
-.\mvnw.cmd test
-```
-
-Los resultados aparecen en `target/surefire-reports/`.
-
----
-
-## 9. Documentación con Swagger (OpenAPI)
-
-Swagger permite visualizar y probar los endpoints desde el navegador, sin necesidad de Postman.
-
-> **Estado actual:** Swagger todavía no está configurado en este proyecto. Los siguientes pasos explican cómo habilitarlo.
-
-### 9.1 Agregar la dependencia en `pom.xml`
-
-```xml
-<dependency>
-    <groupId>org.springdoc</groupId>
-    <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-    <version>2.8.13</version>
-</dependency>
-```
-
-### 9.2 Configurar `application.properties`
-
-```properties
-springdoc.api-docs.enabled=true
-springdoc.swagger-ui.enabled=true
-springdoc.swagger-ui.path=/doc/swagger-ui.html
-```
-
-- `springdoc.api-docs.enabled=true`: genera la especificación OpenAPI.
-- `springdoc.swagger-ui.enabled=true`: activa la interfaz gráfica de Swagger.
-- `springdoc.swagger-ui.path`: define la ruta de acceso.
-
-### 9.3 Documentar los controladores
-
-Cada controlador lleva una anotación `@Tag` que describe su función:
-
-```java
-@Tag(name = "Servicio para la gestión de retos", description = "Servicios CRUD de retos de innovación")
-@RestController
-@RequestMapping("/api/retos")
-public class CReto { ... }
-```
-
-Cada método se documenta con `@Operation`:
-
-```java
-@Operation(
-        summary = "Adicionar reto",
-        description = "Registra un nuevo reto de innovación asociado a una empresa y una categoría"
-)
-@PostMapping
-public ResponseEntity<?> crear(@RequestBody MReto mReto) { ... }
-```
-
-### 9.4 Documentar atributos de las entidades (opcional)
-
-```java
-@Schema(description = "Identificación del reto", example = "1")
-private Integer idreto;
-```
-
-### 9.5 Abrir Swagger
-
-Con la aplicación en ejecución, abrir en el navegador:
-
-```text
-http://localhost:8080/doc/swagger-ui/index.html
-```
-
-Desde ahí se puede seleccionar un endpoint, pulsar **Try it out**, llenar los parámetros y pulsar **Execute** para ver la respuesta.
-
----
-
-## 10. Licencia y derechos de autor
+## 9. Licencia y derechos de autor
 
 Proyecto académico desarrollado para el **Proyecto Integrador** del CESDE (Banco de Retos de Innovación Abierta).
 
